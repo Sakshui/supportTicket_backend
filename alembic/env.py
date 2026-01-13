@@ -15,6 +15,7 @@ if config.config_file_name is not None:
 # -----------------------------------------------------
 # ⚠️ IMPORTANT: Update this import according to your project
 from app.database import Base
+from modules.TicketsHarbour.models import Ticket, SupportSettings, Agent
 
 # Alembic will use this metadata to autogenerate migrations
 target_metadata = Base.metadata
