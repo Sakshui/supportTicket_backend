@@ -42,7 +42,7 @@ async def get_request_data(content_type, request):
     content_type = (content_type or "").lower().strip()
 
    
-    if request.method in ["GET", "DELETE"]:
+    if request.method in ["GET"]:
         data = dict(request.query_params)
         data.pop("time", None)
 

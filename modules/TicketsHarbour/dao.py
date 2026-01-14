@@ -175,7 +175,7 @@ class TicketsDao:
                     updated_at = NOW()
                 WHERE id = :id
                 RETURNING id;
-            """).bindparams(id=id, rating=rating)
+            """).bindparams(id=ticket_id, rating=rating)
         
         result = await execute_query(query)
         row = result.fetchone()
@@ -208,11 +208,7 @@ class SupportSettingsDao:
     
     @staticmethod
     async def get_outlet_by_web_url(web_url: str)-> int:
-        query = text(""" 
-                    SELECT outlet_id
-                    FROM support_settings 
-                    WHERE web_url=:web_url
-                """).bindparams(web_url=web_url)
+        query = select(SupportSettings.outlet_id).where(SupportSettings.web_url == web_url)
         
         outlet_id = await fetch_one(query)
         if not outlet_id:

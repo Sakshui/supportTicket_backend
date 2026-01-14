@@ -167,7 +167,10 @@ async def agents_controller(request: Request, outlet_id: Optional[int] = None) -
 
         case "DELETE":
             result, status_code = await AgentService.delete(**data)
-            message = "Agent deleted successfully"
+            if status_code == 200:
+                message = "Agent deleted successfully"
+            else:
+                return APIResponse.error(message=result.get("error", "Agent deletion failed"), code=status_code)
 
         case _:
             return APIResponse.error(message="Method not allowed", code=405)
@@ -180,7 +183,7 @@ async def agent_rating_controller(request: Request, outlet_id: Optional[int] = N
     data = await get_request_data(request.headers.get("content-type", ""), request)
     data["outlet_id"] = outlet_id
     
-    result, status_code = await AuthTicketService.rate_by_agent(**data)
+    result, status_code = await AuthTicketService.rate_ticket(**data)
     
     if status_code == 200:
         message = "Rating submitted successfully"
@@ -192,7 +195,7 @@ async def agent_rating_controller(request: Request, outlet_id: Optional[int] = N
 async def customer_rating_controller(request: Request) -> ApiResponse:
     data = await get_request_data(request.headers.get("content-type", ""), request)
     
-    result, status_code = await TicketService.rate_by_customer(**data)
+    result, status_code = await TicketService.rate_ticket(**data)
     
     if status_code == 200:
         message = "Rating submitted successfully"
