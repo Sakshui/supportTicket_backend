@@ -75,16 +75,10 @@ class TicketsDao:
 
     @staticmethod
     async def get_last_ticket(outlet_id: int) -> Optional[str]:
-        query = text("""
-            SELECT support_ticket_id
-            FROM tickets
-            WHERE outlet_id = :outlet_id
-            ORDER BY id DESC
-            LIMIT 1;
-        """)
+        query = select(Ticket.support_ticket_id).where(Ticket.outlet_id == outlet_id).order_by(Ticket.id.desc()).limit(1)
 
         async with SupportTicketAsyncSession() as session:
-            result = await session.execute(query, {"outlet_id": outlet_id})
+            result = await session.execute(query)
             row = result.scalar_one_or_none()
 
             if row is None:

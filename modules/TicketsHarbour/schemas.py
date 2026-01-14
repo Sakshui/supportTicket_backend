@@ -139,8 +139,6 @@ class AgentBase(BaseModel):
 
 class AgentRead(AgentBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
 
 
 class AgentUpdateIn(BaseModel):

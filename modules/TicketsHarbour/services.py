@@ -99,7 +99,7 @@ class AuthTicketService:
         
         ticket = await TicketsDao.get_by_id(ticket_id)
         if not ticket:
-            return {"error": "Ticket not found"}, 40
+            return {"error": "Ticket not found"}, 404
         
         if ticket.status != "close":
             return {"error": "Can only rate closed tickets"}, 400
@@ -203,6 +203,26 @@ class TicketService:
             return {"id": id_}, 200
         else:
             return {"id":None}, 403
+        
+    @staticmethod
+    async def rate_ticket(**data):
+        ticket_id = data.get("id")
+        rating = data.get("rating")
+        
+        if not ticket_id or rating is None:
+            return {"error": "id and rating are required"}, 400
+        
+        ticket = await TicketsDao.get_by_id(ticket_id)
+        if not ticket:
+            return {"error": "Ticket not found"}, 404
+        
+        if ticket.status != "close":
+            return {"error": "Can only rate closed tickets"}, 400
+        
+        rating_model = TicketRatingIn(id=ticket_id, rating=rating)
+        
+        id_ = await TicketsDao.update_customer_rating(ticket_id, rating_model.rating)
+        return {"id": id_, "rating": rating_model.rating}, 200
    
 
 class SupportSettingsService:
