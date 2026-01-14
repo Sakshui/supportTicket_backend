@@ -140,7 +140,7 @@ class TicketsDao:
         return result
     
     @staticmethod
-    async def count_open_tickets_by_agent(agent_id: str) -> int:
+    async def count_open_tickets_by_agent(agent_id: int) -> int:
         query = select(func.count(Ticket.id)).where(Ticket.assigned_agent == agent_id, Ticket.status != 'close')
         return await fetch_one(query)
     

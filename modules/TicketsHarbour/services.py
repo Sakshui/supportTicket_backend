@@ -221,7 +221,7 @@ class TicketService:
         
         rating_model = TicketRatingIn(id=ticket_id, rating=rating)
         
-        id_ = await TicketsDao.update_customer_rating(ticket_id, rating_model.rating)
+        id_ = await TicketsDao.update_agent_rating(ticket_id, rating_model.rating)
         return {"id": id_, "rating": rating_model.rating}, 200
    
 

@@ -83,3 +83,15 @@ async def delete_support_settings(request: Request, auth_data=Depends(verify_jwt
 async def create_agent(request: Request ,auth_data=Depends(verify_jwt_token)):
     outlet_id = auth_data.get("outlet_id")
     return await agents_controller(request, outlet_id=outlet_id)
+
+# ========================== RATING ROUTES ==========================
+# Authenticated (agent)
+@router.api_route("/ratings/", methods=["POST", "GET", "PUT", "DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
+async def create_agent_rating(request: Request ,auth_data=Depends(verify_jwt_token)):
+    outlet_id = auth_data.get("outlet_id")
+    return await agent_rating_controller(request, outlet_id=outlet_id)
+
+# Unauthenticated (customer)
+@router.api_route("/ratings/shop", methods=["POST", "GET", "PUT", "DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
+async def create_customer_rating(request: Request):
+    return await customer_rating_controller(request)
