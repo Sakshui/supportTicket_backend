@@ -57,10 +57,10 @@ async def get_request_data(content_type, request):
  
 
    
-    if "application/json" in content_type:
+    if "application/json" in content_type or "application/x-www-form-urlencoded" in content_type:
         body = await request.body()
         return orjson.loads(body) if body else {}
-
+    
 
     if "multipart/form-data" in content_type:
         form = await request.form()
