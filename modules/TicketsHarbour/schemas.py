@@ -33,7 +33,7 @@ class TicketStatusEnum(str, Enum):
 
 class TicketContent(BaseModel):
     subject: str
-    description: str
+    description: Optional[str] = None
     attachment: Optional[List[str]] = None
 
 class RaisedBy(BaseModel):
@@ -45,11 +45,12 @@ class RaisedBy(BaseModel):
 class CustomerDetails(BaseModel):
     customer_id: int
     customer_name: str
+    customer_email: str
 
 
 class AdditionalDetails(BaseModel):
-    tags: str
-    priority: Optional[PriorityEnum] = PriorityEnum.LOW
+    tags: Optional[List[str]] = None
+    priority: PriorityEnum = PriorityEnum.LOW
     department: Union[str, int] #need to change int if needed 
 
 class SourceInfo(BaseModel):
@@ -63,8 +64,8 @@ class TicketBase(BaseModel):
     support_ticket_id: str
     content: Optional[TicketContent]
     raised_by: Optional[RaisedBy]
-    customer_details: Optional[CustomerDetails]     = None
-    additional_details: Optional[AdditionalDetails] = None
+    customer_details: Optional[CustomerDetails] = None
+    additional_details: AdditionalDetails
     outlet_id: int
     api_key: Optional[str] = None
     source: Optional[SourceInfo] = None 
