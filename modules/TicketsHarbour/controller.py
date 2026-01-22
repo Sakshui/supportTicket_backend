@@ -33,7 +33,7 @@ async def auth_tickets_controller(request: Request, outlet_id: Optional[int] = N
         "raw_user_agent": user_agent_str
     }
 
-       
+
     if request.method in ("POST", "PUT"):
         data["source"] = source_payload
     
@@ -45,10 +45,32 @@ async def auth_tickets_controller(request: Request, outlet_id: Optional[int] = N
             message = "Tickets send successfully"
         case "GET":
             support_ticket_id = data.get("support_ticket_id")
-            if support_ticket_id:
+            search = data.get("search")
+            
+            filters = {
+                k: v
+                for k, v in data.items()
+                if k not in {
+                    "search",
+                    "outlet_id",
+                    "customer_name",
+                    "customer_email",
+                    "support_ticket_id",
+                }
+            }
+
+            if search:
+                result, status_code = await AuthTicketService.global_search(
+                    outlet_id=outlet_id,
+                    search=search,
+                )
+            elif support_ticket_id:
                 result, status_code = await AuthTicketService.get_by_support_ticket_id(support_ticket_id)
             else:
-                result, status_code = await AuthTicketService.filters(**data)
+                result, status_code = await AuthTicketService.filters_auth(
+                    outlet_id=outlet_id,
+                    filters=filters,    
+                )
             message = "Tickets fetched successfully"
         case "PUT":
             result, status_code = await AuthTicketService.update(**data)

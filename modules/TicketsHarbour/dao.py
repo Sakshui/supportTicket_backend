@@ -14,6 +14,7 @@ JSON_KEY_MAPPING = {
 
     "customer_id": "customer_details",
     "customer_name": "customer_details",
+    "customer_email": "customer_details",
 
     "priority": "additional_details",
     "department": "additional_details",
@@ -44,6 +45,68 @@ class TicketsDao:
         query = select(Ticket)
         conditions = [getattr(Ticket, key) == value for key, value in filters.items()]
         query = select(Ticket).where(*conditions)
+        return await fetch_all(query)
+
+    @staticmethod
+    async def global_search(
+        *,
+        outlet_id: int,
+        search: str,
+    ):
+        pattern = f"%{search}%"
+
+        query = select(Ticket).where(
+            Ticket.outlet_id == outlet_id,
+            or_(
+                Ticket.support_ticket_id.ilike(pattern),
+                Ticket.customer_details["customer_name"].astext.ilike(pattern),
+                Ticket.customer_details["customer_email"].astext.ilike(pattern),
+                Ticket.content["subject"].astext.ilike(pattern),
+                Ticket.content["description"].astext.ilike(pattern),
+            )
+        )
+
+        return await fetch_all(query)
+
+    @staticmethod
+    async def filters_auth(
+        *,
+        outlet_id: int | None,
+        filters: dict,
+    ) -> list[Ticket]:
+        query = select(Ticket)
+        conditions = []
+
+        if outlet_id is not None:
+            conditions.append(Ticket.outlet_id == outlet_id)
+
+        ALLOWED_COLUMNS = {
+            "support_ticket_id",
+            "status",
+            "assigned_agent",
+            "is_in_trash",
+        }
+
+        for key, value in filters.items():
+            if value is None:
+                continue
+
+            if key in ALLOWED_COLUMNS:
+                conditions.append(getattr(Ticket, key) == value)
+                continue
+
+            json_column_name = JSON_KEY_MAPPING.get(key)
+            if json_column_name:
+                column = getattr(Ticket, json_column_name)
+
+                conditions.append(column[key].astext == str(value))
+                continue
+
+            raise ValueError(f"Unsupported filter: {key}")
+
+        if conditions:
+            query = query.where(*conditions)
+
         return await fetch_all(query)
 
     @staticmethod

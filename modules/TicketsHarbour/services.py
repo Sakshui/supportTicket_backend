@@ -54,14 +54,39 @@ class AuthTicketService:
 
         ticket = TicketRead.from_orm(ticket).model_dump()
         return {"ticket": ticket}, 200
-    
+
+    @staticmethod
+    async def global_search(*, outlet_id: int,search: str,):
+        if len(search) < 2:
+            return {"tickets": []}, 200
+
+        tickets = await TicketsDao.global_search(outlet_id=outlet_id, search=search, )
+
+        tickets = [TicketRead.from_orm(t).model_dump() for t in tickets]
+
+        return {"tickets": tickets}, 200
+
     @staticmethod
     async def filters(**filters):
         tickets = await TicketsDao.filters(**filters)
         tickets = [TicketRead.from_orm(t).model_dump() for t in tickets]
-        print("tickets",tickets)
+        print("[SERVICE] Tickets successfully fetched")
+        # print("tickets",tickets)
         return {"tickets": tickets}, 200
 
+    @staticmethod
+    async def filters_auth(*, outlet_id: int, filters: dict):
+        """
+        Filters tickets for authenticated users.
+        Enforces outlet-level scoping.
+        """
+
+        tickets = await TicketsDao.filters_auth(outlet_id=outlet_id, filters=filters,)
+        tickets = [TicketRead.from_orm(t).model_dump() for t in tickets]
+
+        print("[SERVICE][AUTH] Tickets successfully fetched")
+
+        return {"tickets": tickets}, 200
 
     @staticmethod
     async def delete(**data):
