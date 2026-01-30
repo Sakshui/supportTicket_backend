@@ -106,7 +106,15 @@ class AuthTicketService:
         outlet_id = data.get('outlet_id')
 
         if assigned_agent is not None:
-            assigned_agent = int(assigned_agent)
+            agent = await AgentsDao.get_by_id(assigned_agent)
+            if not agent:
+                return {"error": "Assigned agent not found"}, 400
+
+            if agent.outlet_id != outlet_id:
+                return {"error": "Agent does not belong to this outlet"}, 403
+
+            if agent.status != "active":
+                return {"error": "Agent is not active"}, 400
 
         ticket_update = TicketUpdateIn(id = ticket_id, outlet_id=outlet_id, status=status, assigned_agent=assigned_agent)
 
@@ -126,7 +134,7 @@ class AuthTicketService:
         if not ticket:
             return {"error": "Ticket not found"}, 404
         
-        if ticket.status != "close":
+        if ticket.status != "closed":
             return {"error": "Can only rate closed tickets"}, 400
         
         rating_model = TicketRatingIn(id=ticket_id, rating=rating)
@@ -210,7 +218,7 @@ class TicketService:
         tickets = [TicketRead.from_orm(ticket).dict() for ticket in tickets]
         return {"tickets": tickets}, 200
 
- 
+
     @staticmethod
     async def delete(**data):
         id_ = data.get('id')
@@ -241,14 +249,14 @@ class TicketService:
         if not ticket:
             return {"error": "Ticket not found"}, 404
         
-        if ticket.status != "close":
+        if ticket.status != "closed":
             return {"error": "Can only rate closed tickets"}, 400
         
         rating_model = TicketRatingIn(id=ticket_id, rating=rating)
         
         id_ = await TicketsDao.update_agent_rating(ticket_id, rating_model.rating)
         return {"id": id_, "rating": rating_model.rating}, 200
-   
+
 
 class SupportSettingsService:
 
@@ -301,6 +309,10 @@ class AgentService:
         existing = await AgentsDao.get_by_user_id(user_id=user_id)
         if existing:
             return {"error": "User has already been designated as an agent"}, 409
+
+        # Add validation for required fields
+        if not data.get("category") or not data.get("sub_category"):
+            return {"error": "Category and sub_category are required"}, 400
 
         agent_model = AgentBase(**data)
         id_ = await AgentsDao.create(agent_model)
