@@ -332,8 +332,22 @@ class AgentsDao:
     
     @staticmethod
     async def update(agent: AgentUpdateIn) -> int:
-        agent_obj = Agent(**agent.dict())
-        return await update(agent_obj)
+        # Fetch the existing agent from database
+        existing_agent = await AgentsDao.get_by_id(agent.id)
+        
+        if not existing_agent:
+            return None
+        
+        # Get only the fields that were provided (exclude unset and id)
+        update_data = agent.model_dump(exclude_unset=True, exclude={"id"})
+        
+        # Update the existing Agent object's attributes
+        for key, value in update_data.items():
+            if isinstance(value, (AgentCategoryEnum, AgentSubCategoryEnum, AgentLevelEnum)):
+                value = value.value
+            setattr(existing_agent, key, value)
+        
+        return await update(existing_agent)  # existing_agent is an Agent object, not a dict
     
     @staticmethod
     async def delete(id: int):
