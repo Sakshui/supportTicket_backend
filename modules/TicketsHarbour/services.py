@@ -1,8 +1,6 @@
 from .schemas import *
 from .dao import *
-
-
-
+from math import ceil
 
 class AuthTicketService:
     
@@ -11,25 +9,30 @@ class AuthTicketService:
 
         outlet_id = data.get('outlet_id')
         support_settings_for_outlet = await SupportSettingsDao.get_by_outlet_id_or_web_url(outlet_id=outlet_id)
-
+        
         if not support_settings_for_outlet:
             return {"error": "SupportSettings not found for Outlet"}, 404
 
-        additional_details = data.get("additional_details", {})
-        if not additional_details or not additional_details["department"]:
+
+        department = data.get("department")
+        if not department:
             return {"error": "department field is required"}, 400
 
         settings = support_settings_for_outlet.settings
         ticket_prefix = settings["prefix"]
         start_no = settings["start_no"]
         email_required = settings["email_required"]
-        email = data.get("raised_by", {}).get("email")
-
-        if email_required and email is None:
-            return {"error": "kindly provide email to generate Ticket."}, 400
+        # email = data.get("raised_by", {}).get("email")
+        
+        raised_by = data.get("raised_by")
+        raised_by_id = data.get("raised_by_id")
+        if email_required and raised_by is None and raised_by_id is None:
+            return {"error": "Kindly provide email and other required fields to generate Ticket."}, 400
+        if raised_by is not None:
+            if raised_by != TicketRaisedByEnum.AGENT.value and raised_by != TicketRaisedByEnum.CUSTOMER.value:
+                return {"error": "Ticket raiser should be valid entity - customer or agent."}, 400
 
         last_ticket = await TicketsDao.get_last_ticket(outlet_id=outlet_id)
-
         if last_ticket:
             current_no = ''.join(ch for ch in last_ticket if ch.isdigit())
             next_no = int(current_no) + 1
@@ -45,7 +48,6 @@ class AuthTicketService:
         id_ = await TicketsDao.create(ticket_model)
         return {"id": id_}, 200
 
-
     @staticmethod
     async def get_by_support_ticket_id(support_ticket_id: str):
         ticket = await TicketsDao.get_by_support_ticket_id(support_ticket_id)
@@ -54,6 +56,18 @@ class AuthTicketService:
 
         ticket = TicketRead.from_orm(ticket).model_dump()
         return {"ticket": ticket}, 200
+
+    @staticmethod
+    async def get_support_tickets_by_assigned_agent(agent_id: int):
+        tickets = await TicketsDao.get_by_assigned_agent_id(agent_id)
+        if not tickets:
+            return {"tickets": []}, 404
+
+        agent_tickets = [
+                TicketRead.model_validate(ticket).model_dump()
+                for ticket in tickets
+            ]
+        return {"tickets" : agent_tickets}, 200
 
     @staticmethod
     async def global_search(*, outlet_id: int,search: str,):
@@ -71,7 +85,6 @@ class AuthTicketService:
         tickets = await TicketsDao.filters(**filters)
         tickets = [TicketRead.from_orm(t).model_dump() for t in tickets]
         print("[SERVICE] Tickets successfully fetched")
-        # print("tickets",tickets)
         return {"tickets": tickets}, 200
 
     @staticmethod
@@ -84,8 +97,6 @@ class AuthTicketService:
         tickets = await TicketsDao.filters_auth(outlet_id=outlet_id, filters=filters,)
         tickets = [TicketRead.from_orm(t).model_dump() for t in tickets]
 
-        print("[SERVICE][AUTH] Tickets successfully fetched")
-
         return {"tickets": tickets}, 200
 
     @staticmethod
@@ -97,16 +108,15 @@ class AuthTicketService:
         await TicketsDao.delete(ticket_id)
         return {"id": ticket_id}, 200
 
-
     @staticmethod
     async def update(**data):
         ticket_id = data.get("id")
         status = data.get("status")
-        assigned_agent = data.get("assigned_agent")
+        assigned_agent_id = data.get("assigned_agent_id")
         outlet_id = data.get('outlet_id')
 
-        if assigned_agent is not None:
-            agent = await AgentsDao.get_by_id(assigned_agent)
+        if assigned_agent_id is not None:
+            agent = await AgentsDao.get_by_id(assigned_agent_id)
             if not agent:
                 return {"error": "Assigned agent not found"}, 400
 
@@ -116,8 +126,9 @@ class AuthTicketService:
             if agent.status != "active":
                 return {"error": "Agent is not active"}, 400
 
-        ticket_update = TicketUpdateIn(id = ticket_id, outlet_id=outlet_id, status=status, assigned_agent=assigned_agent)
-
+        ticket_update = TicketUpdateIn(id = ticket_id, outlet_id=outlet_id, status=status, assigned_agent_id=assigned_agent_id)
+        # print("Ticket Update Payload: ", ticket_update)
+        
         updated_id = await TicketsDao.update_status_and_agent(ticket_update)
 
         return {"id": updated_id}, 200
@@ -141,6 +152,82 @@ class AuthTicketService:
         
         id_ = await TicketsDao.update_customer_rating(ticket_id, rating_model.rating)
         return {"id": id_, "rating": rating_model.rating}, 200
+
+
+    @staticmethod
+    async def get_auth_paginated_tickets(**data):
+
+        outlet_id = data.get("outlet_id")
+
+        # Pagination
+        page = max(int(data.get("page", 1)), 1)
+        page_size = int(data.get("page_size", 10))
+
+        limit = page_size
+        offset = (page - 1) * limit
+
+        # Optional params
+        search = data.get("search")
+
+        sort_by = data.get("sort_by") or "created_at"
+        sort_order = data.get("sort_order") or "desc"
+
+        filters = {
+            "status": data.get("status"),
+            "priority": data.get("priority"),
+            "department": data.get("department"),
+        }
+
+        filters = {k: v for k, v in filters.items() if v is not None}
+
+        tickets, total_ticket_count = await TicketsDao.get_paginated_tickets(
+            outlet_id=outlet_id,
+            limit=limit,
+            offset=offset,
+            search=search,
+            filters=filters,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+
+        tickets = [TicketRead.from_orm(t).model_dump() for t in tickets]
+
+        if (page_size != 0):
+            total_pages = ceil(total_ticket_count[0] / page_size)
+            has_next = page < total_pages
+            has_previous = page > 1
+            page_start = offset + 1
+        else:
+            total_pages = 1
+            has_next = False
+            has_previous = False
+            page_start = 1
+        
+        page_end = min(offset + page_size, total_ticket_count[0])
+
+        return {"tickets": tickets, 
+                "page": page, 
+                "page_size": page_size, 
+                "page_content_size": len(tickets), 
+                "total_tickets": total_ticket_count[0],
+                "total_pages": total_pages,
+                "page_start": page_start,
+                "page_end": page_end,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                }, 200 
+
+    @staticmethod
+    async def get_ticket_stats(**data):
+        
+        outlet_id = data.get("outlet_id")
+        
+        if outlet_id is not None:
+            outlet_id = int(outlet_id)
+        
+        ticket_stats = await TicketsDao.get_ticket_stats(outlet_id=outlet_id)
+        
+        return {"ticket_stats": ticket_stats}, 200
 
 
 class TicketService:
@@ -274,19 +361,16 @@ class SupportSettingsService:
         id_ = await SupportSettingsDao.create(model)
         return {"id": id_}, 200
 
-
     @staticmethod
     async def filters(**filters):
         settings = await SupportSettingsDao.filters(**filters)
         settings = [SupportSettingsRead.from_orm(i).model_dump() for i in settings]
         return {"settings": settings}, 200
 
-
     @staticmethod
     async def update(**data):
         id_ = await SupportSettingsDao.update(SupportSettingsUpdateIn(**data))
         return {"id": id_}, 200
-
 
     @staticmethod
     async def delete(**data):
@@ -370,3 +454,78 @@ class AgentService:
 
         await AgentsDao.delete(agent_id)
         return {"id": agent_id}, 200
+    
+    @staticmethod
+    async def get_auth_paginated_agents(**data):
+
+        outlet_id = data.get("outlet_id")
+
+        # Pagination
+        page = max(int(data.get("page", 1)), 1)
+        page_size = int(data.get("page_size", 10))
+
+        limit = page_size
+        offset = (page - 1) * limit
+
+        # Optional params
+        search = data.get("search")
+
+        sort_by = data.get("sort_by") or "created_at"
+        sort_order = data.get("sort_order") or "desc"
+
+        filters = {
+            "status": data.get("status"),
+            "level": data.get("level"),
+            "department": data.get("department"),
+        }
+
+        filters = {k: v for k, v in filters.items() if v is not None}
+
+        agents, total_agent_count = await AgentsDao.get_paginated_agents(
+            outlet_id=outlet_id,
+            limit=limit,
+            offset=offset,
+            search=search,
+            filters=filters,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+
+        agents = [AgentRead.from_orm(t).model_dump() for t in agents]
+
+        if (page_size != 0):
+            total_pages = ceil(total_agent_count[0] / page_size)
+            has_next = page < total_pages
+            has_previous = page > 1
+            page_start = offset + 1
+        else:
+            total_pages = 1
+            has_next = False
+            has_previous = False
+            page_start = 1
+        
+        page_end = min(offset + page_size, total_agent_count[0])
+
+        return {"agents": agents, 
+                "page": page, 
+                "page_size": page_size, 
+                "page_content_size": len(agents), 
+                "total_agents": total_agent_count[0],
+                "total_pages": total_pages,
+                "page_start": page_start,
+                "page_end": page_end,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                }, 200 
+    
+    @staticmethod
+    async def get_agent_stats(**data):
+        
+        outlet_id = data.get("outlet_id")
+        
+        if outlet_id is not None:
+            outlet_id = int(outlet_id)
+        
+        agent_stats = await AgentsDao.get_agent_stats(outlet_id=outlet_id)
+        
+        return {"agent_stats": agent_stats}, 200

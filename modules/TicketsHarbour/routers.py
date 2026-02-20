@@ -21,6 +21,13 @@ async def get_tickets_authenticated(request: Request, auth_data=Depends(verify_j
     outlet_id = auth_data.get("outlet_id")
     return await auth_tickets_controller(request, outlet_id=outlet_id)
 
+
+@router.api_route("/handler/stats", methods=["GET"], response_model=APIResponse[dict], response_class=ApiResponse)
+async def get_tickets_authenticated(request: Request, auth_data=Depends(verify_jwt_token)):
+    outlet_id = auth_data.get("outlet_id")
+    return await auth_tickets_stats_controller(request, outlet_id=outlet_id)
+
+
 @router.api_route("/handler/",methods=["PUT"],response_model=APIResponse[dict],response_class=ApiResponse)
 async def update_ticket_authentication(request:Request,auth_data=Depends(verify_jwt_token)):
     outlet_id = auth_data.get("outlet_id")
@@ -35,19 +42,19 @@ async def delete_tickets_authenticated(request: Request, auth_data=Depends(verif
 
 # ========================== UNAUTHENTICATED TICKET ROUTES ==========================
 
-@router.api_route("/handler/shop", methods=["POST"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def create_tickets(request: Request):
-    return await tickets_controller(request=request)
+# @router.api_route("/handler/shop", methods=["POST"], response_model=APIResponse[dict], response_class=ApiResponse)
+# async def create_tickets(request: Request):
+#     return await tickets_controller(request=request)
 
 
-@router.api_route("/handler/shop", methods=["GET"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def get_tickets(request: Request):
-    return await tickets_controller(request=request)
+# @router.api_route("/handler/shop", methods=["GET"], response_model=APIResponse[dict], response_class=ApiResponse)
+# async def get_tickets(request: Request):
+#     return await tickets_controller(request=request)
 
 
-@router.api_route("/handler/shop", methods=["DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def delete_ticket(request: Request):
-    return await tickets_controller(request=request)
+# @router.api_route("/handler/shop", methods=["DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
+# async def delete_ticket(request: Request):
+#     return await tickets_controller(request=request)
 
 
 
@@ -84,6 +91,11 @@ async def create_agent(request: Request ,auth_data=Depends(verify_jwt_token)):
     outlet_id = auth_data.get("outlet_id")
     return await agents_controller(request, outlet_id=outlet_id)
 
+@router.api_route("/agents/stats", methods=["GET"], response_model=APIResponse[dict], response_class=ApiResponse)
+async def create_agent(request: Request ,auth_data=Depends(verify_jwt_token)):
+    outlet_id = auth_data.get("outlet_id")
+    return await agents_stats_controller(request, outlet_id=outlet_id)
+
 # ========================== RATING ROUTES ==========================
 # Authenticated (agent)
 @router.api_route("/ratings/", methods=["POST", "GET", "PUT", "DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
@@ -92,6 +104,6 @@ async def create_agent_rating(request: Request ,auth_data=Depends(verify_jwt_tok
     return await agent_rating_controller(request, outlet_id=outlet_id)
 
 # Unauthenticated (customer)
-@router.api_route("/ratings/shop", methods=["POST", "GET", "PUT", "DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def create_customer_rating(request: Request):
-    return await customer_rating_controller(request)
+# @router.api_route("/ratings/shop", methods=["POST", "GET", "PUT", "DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
+# async def create_customer_rating(request: Request):
+#     return await customer_rating_controller(request)

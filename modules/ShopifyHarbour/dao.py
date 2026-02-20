@@ -366,11 +366,11 @@ class SupportSettingsDao:
 # -------------------------------------------------------------- Agents ------------------------------------------------------------
 
 AGENTS_NORMAL_COLUMNS_MAPPING = {
-    "created_at" : Agent.created_at,
-    "status": Agent.status,
-    "outlet_id": Agent.outlet_id,
-    "level": Agent.level,
-    "department": Agent.department,
+    "created_at" : Ticket.created_at,
+    "status": Ticket.status,
+    "outlet_id": Ticket.outlet_id,
+    "level": Ticket.priority,
+    "department": Ticket.department,
 }
 
 class AgentsDao:
@@ -406,6 +406,7 @@ class AgentsDao:
         # search
         if search:
             query = query.where(or_(
+                Agent.user_id.ilike(search),
                 Agent.agent_email.ilike(search),
                 Agent.agent_first_name.ilike(search),
                 Agent.agent_last_name.ilike(search),

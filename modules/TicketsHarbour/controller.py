@@ -33,7 +33,6 @@ async def auth_tickets_controller(request: Request, outlet_id: Optional[int] = N
         "raw_user_agent": user_agent_str
     }
 
-
     if request.method in ("POST", "PUT"):
         data["source"] = source_payload
     
@@ -44,33 +43,7 @@ async def auth_tickets_controller(request: Request, outlet_id: Optional[int] = N
             result, status_code = await AuthTicketService.save(**data)
             message = "Tickets send successfully"
         case "GET":
-            support_ticket_id = data.get("support_ticket_id")
-            search = data.get("search")
-            
-            filters = {
-                k: v
-                for k, v in data.items()
-                if k not in {
-                    "search",
-                    "outlet_id",
-                    "customer_name",
-                    "customer_email",
-                    "support_ticket_id",
-                }
-            }
-
-            if search:
-                result, status_code = await AuthTicketService.global_search(
-                    outlet_id=outlet_id,
-                    search=search,
-                )
-            elif support_ticket_id:
-                result, status_code = await AuthTicketService.get_by_support_ticket_id(support_ticket_id)
-            else:
-                result, status_code = await AuthTicketService.filters_auth(
-                    outlet_id=outlet_id,
-                    filters=filters,    
-                )
+            result, status_code = await AuthTicketService.get_auth_paginated_tickets(**data)
             message = "Tickets fetched successfully"
         case "PUT":
             result, status_code = await AuthTicketService.update(**data)
@@ -84,47 +57,58 @@ async def auth_tickets_controller(request: Request, outlet_id: Optional[int] = N
     return APIResponse.success(data=result, message=message, code=status_code)
 
 
-# ============================================== UNAUTHENTICATED CUSTOMER TICKET CONTROLLER ========================================
-
-async def tickets_controller(request: Request) -> ApiResponse:   
+async def auth_tickets_stats_controller(request: Request, outlet_id: Optional[int] = None) -> ApiResponse:
     data = await get_request_data(request.headers.get("content-type", ""), request)
-
-    web_url = data.get("web_url")
-    customer_id = data.get("customer_details", {}).get("customer_id") or data.get("customer_id")
-    email = data.get("raised_by", {}).get("email") or data.get("email")
-
-    if not web_url:
-        return APIResponse.error(message="Missing param web_url", code=400)
-
-    if not customer_id or not email:
-        return APIResponse.error(message="customer_id or email not found", code=400)
-
+    
     method = request.method
-
-    match method:
-        case "POST":
-                result, status_code = await TicketService.save(**data)
-                message = "Tickets send successfully"
-        case "GET":
-            support_ticket_id = data.get("support_ticket_id")
-            if support_ticket_id:
-                result, status_code = await TicketService.get_by_support_ticket_id(support_ticket_id)
-            else:
-                result, status_code = await TicketService.filters(**data)
-                message = "Tickets fetched successfully"
-        case "PUT":
-            result, status_code = await TicketService.update(**data)
-            message = "Tickets updated successfully"
-        case "DELETE":
-            result, status_code = await TicketService.delete(**data)
-            message = "Tickets deleted successfully"
-        case _:
-            return APIResponse.error(message="Method not allowed", code=405)
-
+    
+    if method != "GET":
+        return APIResponse.error(message="Method not allowed", code=405)
+    
+    result, status_code = await AuthTicketService.get_ticket_stats(**data)
+    message = "Tickets stat fetched successfully"
+    
     return APIResponse.success(data=result, message=message, code=status_code)
 
-    
-    
+# ============================================== UNAUTHENTICATED CUSTOMER TICKET CONTROLLER ========================================
+
+# async def tickets_controller(request: Request) -> ApiResponse:   
+#     data = await get_request_data(request.headers.get("content-type", ""), request)
+
+#     web_url = data.get("web_url")
+#     customer_id = data.get("customer_details", {}).get("customer_id") or data.get("customer_id")
+#     email = data.get("raised_by", {}).get("email") or data.get("email")
+
+#     if not web_url:
+#         return APIResponse.error(message="Missing param web_url", code=400)
+
+#     if not customer_id or not email:
+#         return APIResponse.error(message="customer_id or email not found", code=400)
+
+#     method = request.method
+
+#     match method:
+#         case "POST":
+#                 result, status_code = await TicketService.save(**data)
+#                 message = "Tickets send successfully"
+#         case "GET":
+#             support_ticket_id = data.get("support_ticket_id")
+#             if support_ticket_id:
+#                 result, status_code = await TicketService.get_by_support_ticket_id(support_ticket_id)
+#             else:
+#                 result, status_code = await TicketService.filters(**data)
+#                 message = "Tickets fetched successfully"
+#         case "PUT":
+#             result, status_code = await TicketService.update(**data)
+#             message = "Tickets updated successfully"
+#         case "DELETE":
+#             result, status_code = await TicketService.delete(**data)
+#             message = "Tickets deleted successfully"
+#         case _:
+#             return APIResponse.error(message="Method not allowed", code=405)
+
+#     return APIResponse.success(data=result, message=message, code=status_code)
+
 # ========================== SUPPORT SETTINGS CONTROLLER ==========================
 
 async def support_settings_controller(request: Request, outlet_id: Optional[int]) -> ApiResponse:
@@ -172,15 +156,7 @@ async def agents_controller(request: Request, outlet_id: Optional[int] = None) -
             message = "Agent created successfully"
 
         case "GET":
-            agent_id = data.get("id")
-            user_id = data.get("user_id")
-            
-            if agent_id:
-                result, status_code = await AgentService.get_by_id(agent_id)
-            elif user_id:
-                result, status_code = await AgentService.get_by_user_id(user_id)
-            else:
-                result, status_code = await AgentService.filters(**data)
+            result, status_code = await AgentService.get_auth_paginated_agents(**data)
             message = "Agents fetched successfully"
 
         case "PUT":
@@ -199,6 +175,19 @@ async def agents_controller(request: Request, outlet_id: Optional[int] = None) -
 
     return APIResponse.success(data=result, message=message, code=status_code)
 
+async def agents_stats_controller(request: Request, outlet_id: Optional[int]) -> ApiResponse:
+    data = await get_request_data(request.headers.get("content-type", ""), request)
+    
+    method = request.method
+    if method != "GET":
+        return APIResponse.error("Method not allowed", code=405)
+    
+    result, status_code = await AgentService.get_agent_stats(**data)
+    message = "Agent stats fetched successfully"
+    
+    return APIResponse.success(data=result, message=message, code=status_code)
+
+
 # ========================== TICKET RATING CONTROLLERS ==========================
 
 async def agent_rating_controller(request: Request, outlet_id: Optional[int] = None) -> ApiResponse:
@@ -214,14 +203,14 @@ async def agent_rating_controller(request: Request, outlet_id: Optional[int] = N
     
     return APIResponse.success(data=result, message=message, code=status_code)
 
-async def customer_rating_controller(request: Request) -> ApiResponse:
-    data = await get_request_data(request.headers.get("content-type", ""), request)
+# async def customer_rating_controller(request: Request) -> ApiResponse:
+#     data = await get_request_data(request.headers.get("content-type", ""), request)
     
-    result, status_code = await TicketService.rate_ticket(**data)
+#     result, status_code = await TicketService.rate_ticket(**data)
     
-    if status_code == 200:
-        message = "Rating submitted successfully"
-    else:
-        message = result.get("error", "Rating failed")
+#     if status_code == 200:
+#         message = "Rating submitted successfully"
+#     else:
+#         message = result.get("error", "Rating failed")
     
-    return APIResponse.success(data=result, message=message, code=status_code)
+#     return APIResponse.success(data=result, message=message, code=status_code)
