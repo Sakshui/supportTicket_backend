@@ -65,8 +65,8 @@ def upgrade() -> None:
     op.create_index(op.f('ix_tickets_created_at'), 'tickets', ['created_at'], unique=False)
     op.create_index(op.f('ix_tickets_outlet_id'), 'tickets', ['outlet_id'], unique=False)
     op.create_index(op.f('ix_tickets_support_ticket_id'), 'tickets', ['support_ticket_id'], unique=False)
-    op.drop_index(op.f('ix_apscheduler_jobs_next_run_time'), table_name='apscheduler_jobs')
-    op.drop_table('apscheduler_jobs')
+    #op.drop_index(op.f('ix_apscheduler_jobs_next_run_time'), table_name='apscheduler_jobs')
+    #op.drop_table('apscheduler_jobs')
     # ### end Alembic commands ###
 
 

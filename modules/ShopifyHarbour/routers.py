@@ -18,39 +18,10 @@ async def create_tickets(request: Request):
 async def get_tickets(request: Request):
     return await tickets_controller(request=request)
 
-
-@router.api_route("/handler/shop", methods=["DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def delete_ticket(request: Request):
-    return await tickets_controller(request=request)
-
-
-
-# ========================== SUPPORT SETTINGS ROUTES ==========================
-
-@router.api_route("/settings/", methods=["POST"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def create_support_settings(request: Request, auth_data=Depends(verify_jwt_token)):
-    outlet_id = auth_data.get("outlet_id")
-    
-    return await support_settings_controller(request, outlet_id=outlet_id)
-
-
-@router.api_route("/settings/", methods=["GET"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def get_support_settings(request: Request, auth_data=Depends(verify_jwt_token)):
-    outlet_id = auth_data.get("outlet_id")
-    return await support_settings_controller(request, outlet_id=outlet_id)
-
-
-@router.api_route("/settings/", methods=["PUT"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def update_support_settings(request: Request, auth_data=Depends(verify_jwt_token)):
-    outlet_id = auth_data.get("outlet_id")
-    return await support_settings_controller(request, outlet_id=outlet_id)
-
-
-@router.api_route("/settings/", methods=["DELETE"], response_model=APIResponse[dict], response_class=ApiResponse)
-async def delete_support_settings(request: Request, auth_data=Depends(verify_jwt_token)):
-    outlet_id = auth_data.get("outlet_id")
-    return await support_settings_controller(request, outlet_id=outlet_id)
-
+#-------close ticket--------
+@router.api_route("/handler/shop/close", methods=["POST"], response_model=APIResponse[dict], response_class=ApiResponse)
+async def close_ticket(request: Request):
+    return await close_ticket_controller(request=request)
 
 # ========================== RATING ROUTES ==========================
 

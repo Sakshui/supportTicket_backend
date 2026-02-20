@@ -1,5 +1,5 @@
 from .schemas import *
-from .dao import *
+from modules.TicketsHarbour.dao import *
 
 class TicketService:
 
@@ -75,6 +75,35 @@ class TicketService:
         tickets = await TicketsDao.filters_unauth(**filters)
         tickets = [TicketRead.from_orm(ticket).dict() for ticket in tickets]
         return {"tickets": tickets}, 200
+    
+    @staticmethod
+    async def update(**data):
+        id_ = data.get("id")
+        status = data.get("status")
+        assigned_agent = data.get("assigned_agent")
+
+        if not id_:
+            return {"error": "id is required for update"}, 400
+
+        ticket = await TicketsDao.get_by_id(id=id_)
+        if not ticket:
+            return {"error": "Ticket not found"}, 404
+
+        customer_id = data.get("customer_id")
+        ticket_customer_id = (ticket.customer_details or {}).get("customer_id")
+
+        if customer_id is not None and ticket_customer_id is not None and int(customer_id) != int(ticket_customer_id):
+            return {"error": "Ticket does not belong to this customer"}, 403
+
+        ticket_update = TicketUpdateIn(
+            id=id_,
+            outlet_id=ticket.outlet_id,
+            status=status,
+            assigned_agent=assigned_agent,
+        )
+
+        updated_id = await TicketsDao.update_status_and_agent(ticket_update)
+        return {"id": updated_id}, 200
 
 
     @staticmethod

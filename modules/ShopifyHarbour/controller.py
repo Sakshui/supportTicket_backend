@@ -46,6 +46,35 @@ async def tickets_controller(request: Request) -> ApiResponse:
     return APIResponse.success(data=result, message=message, code=status_code)
 
 
+async def close_ticket_controller(request: Request) -> ApiResponse:
+    data = await get_request_data(request.headers.get("content-type", ""), request)
+
+    web_url = data.get("web_url")
+    customer_id = data.get("customer_details", {}).get("customer_id") or data.get("customer_id")
+    email = data.get("raised_by", {}).get("email") or data.get("email")
+
+    if not web_url:
+        return APIResponse.error(message="Missing param web_url", code=400)
+
+    if not customer_id or not email:
+        return APIResponse.error(message="customer_id or email not found", code=400)
+
+    result, status_code = await TicketService.close_ticket(**data)
+
+    if status_code >= 400:
+        return APIResponse.error(
+            message=result.get("error", "Failed to close ticket"),
+            code=status_code
+        )
+
+    return APIResponse.success(
+        data=result,
+        message="Ticket closed successfully",
+        code=status_code
+    )
+
+
+
 # ========================== SUPPORT SETTINGS CONTROLLER ==========================
 
 async def support_settings_controller(request: Request, outlet_id: Optional[int]) -> ApiResponse:
